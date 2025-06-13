@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Bayesian Data Analyzer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+        }
+
+        h1 {
+            text-align: center;
+            color: #1e3c72;
+            margin-bottom: 10px;
+            font-size: 2.8em;
+            font-weight: 700;
+            background: linear-gradient(45deg, #1e3c72, #2a5298);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.2em;
+        }
+
+        .upload-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin: 20px 0;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px dashed rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .file-input-label:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+            transform: translateY(-2px);
+        }
+
+        .section {
+            background: rgba(30, 60, 114, 0.05);
+            border: 1px solid rgba(30, 60, 114, 0.1);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+
+        .section h3 {
+            color: #1e3c72;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .data-preview {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            max-height: 300px;
+            overflow: auto;
+            border: 1px solid #e0e0e0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 8px 12px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #1e3c72;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:nth-child(even) {
+            background: rgba(30, 60, 114, 0.05);
+        }
+
+        .analysis-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 25px 0;
+            display: none;
+        }
+
+        .results h3 {
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            height: 400px;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #c62828;
+            display: none;
+        }
+
+        .info {
+            background: #e3f2fd;
+            color: #1565c0;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #2196f3;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            color: #1e3c72;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .analysis-controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2.2em;
+            }
+            
+            .stat-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    
+/* Auto-hide rows after the first 10 */
+tbody tr:nth-child(n+11) {
+    display: none;
+}
+
+/* Toggle button styling */
+.show-more-btn {
+    display: block;
+    margin: 10px auto;
+    padding: 8px 16px;
+    background-color: #1e3c72;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Bayesian Data Analyzer</h1>
+<p class="subtitle">Upload CSV datasets and perform Bayesian statistical analysis</p>
+<div class="info" style="margin-top: 20px;">
+<strong>Example CSV Format (not real information):</strong>
+<pre style="background:#f0f0f0; padding:10px; border-radius:5px; overflow:auto;">
+PatientID,Name,Age,Gender,Height_cm,Weight_kg,BMI,BloodPressure_Systolic,BloodPressure_Diastolic,Diagnosis
+P001,John Doe,45,M,175,85,27.8,130,85,Hypertension
+P002,Jane Smith,32,F,160,60,23.4,118,76,Healthy
+    </pre>
+<small style="color:#555;">Make sure your CSV includes a header row and uses commas as separators.</small>
+</div>
+<div class="upload-section">
+<h3>📁 Upload Your Dataset</h3>
+<p>Upload a CSV file to begin Bayesian analysis</p>
+<div class="file-input-wrapper">
+<input accept=".csv" class="file-input" id="csv-file" type="file"/>
+<label class="file-input-label" for="csv-file">
+                    📎 Choose CSV File
+                </label>
+</div>
+<div id="file-info" style="margin-top: 15px; font-size: 14px; opacity: 0.8;"></div>
+</div>
+<div class="error" id="error"></div>
+<div class="section" id="data-section" style="display: none;">
+<h3>Data Preview</h3>
+<div class="info" id="data-info"></div>
+<div class="data-preview" id="data-preview"></div>
+</div>
+<div class="section" id="analysis-section" style="display: none;">
+<div class="tabs">
+<button class="tab active" onclick="switchTab('bayesian-estimation')">Bayesian Estimation</button>
+<button class="tab" onclick="switchTab('ab-testing')">A/B Testing</button>
+<button class="tab" onclick="switchTab('classification')">Naive Bayes</button>
+</div>
+<div class="tab-content active" id="bayesian-estimation">
+<h3>📈 Bayesian Parameter Estimation</h3><p style="font-size: 0.85em; color: #434275; margin-bottom: 15px;">Select a numeric column (e.g., Age, BMI) and enter a prior mean</p>
+<p>Estimate parameters with uncertainty using Bayesian methods</p>
+<div class="analysis-controls">
+<div>
+<label>Target Column (Numeric):</label>
+<select id="target-column"></select>
+</div>
+<div>
+<label>Prior Mean:</label>
+<input id="prior-mean" step="0.1" type="number" value="0"/>
+</div>
+</div>
+<button class="btn" onclick="performBayesianEstimation()">Run Bayesian Estimation</button>
+</div>
+<div class="tab-content" id="ab-testing">
+<h3>🧪 Bayesian A/B Testing</h3><p style="font-size: 0.85em; color: #434275; margin-bottom: 15px;">Select a categorical column (e.g., Gender) for grouping and a numeric column (e.g., BMI) as the metric</p>
+<p>Compare two groups using Bayesian methods</p>
+<div class="analysis-controls">
+<div>
+<label>Group Column:</label>
+<select id="group-column"></select>
+</div>
+<div>
+<label>Metric Column:</label>
+<select id="metric-column"></select>
+</div>
+</div>
+<button class="btn" onclick="performABTesting()">Run A/B Test</button>
+</div>
+<div class="tab-content" id="classification">
+<h3>🎲 Naive Bayes Classification</h3>
+<p>Predict categories using Bayesian classification</p>
+<div class="analysis-controls">
+<div>
+<label>Feature Column:</label>
+<select id="feature-column"></select>
+</div>
+<div>
+<label>Class Column:</label>
+<select id="class-column"></select>
+</div>
+</div>
+<button class="btn" onclick="performNaiveBayes()">Run Classification</button>
+</div>
+</div>
+<div class="results" id="results">
+<h3 id="results-title">Analysis Results</h3>
+<div id="results-content"></div>
+<div class="chart-container" id="chart-container">
+<canvas id="results-chart"></canvas>
+</div>
+</div>
+</div>
+<script src="main.js"></script></body>
+</html>
