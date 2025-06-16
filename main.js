@@ -154,7 +154,7 @@
             const groups = [...new Set(currentData.map(row => row[groupColumn]))].filter(g => g !== null && g !== undefined);
             
             if (groups.length !== 2) {
-            alert('A/B testing requires exactly 2 unique group values. Please select an appropriate column.');
+            alert('The Group Column requires a category of exactly 2 unique group values (e.g., "M" and "F"). The Metric Column must contain numeric values like BMI or Blood Pressure.');
             console.warn('Invalid number of groups for A/B testing');
                 showError('A/B testing requires exactly 2 groups. Found: ' + groups.length);
                 return;
@@ -269,7 +269,7 @@
         }
 
         function createHistogram(data, mean, label) {
-            const ctx = document.getElementById('results-chart').getContext('2d');
+            const ctx = resetChartCanvas();
             
             if (currentChart) {
                 currentChart.destroy();
@@ -332,50 +332,58 @@
             });
         }
 
-        function createComparisonChart(groups) {
-            const ctx = document.getElementById('results-chart').getContext('2d');
-            
-            if (currentChart) {
-                currentChart.destroy();
-            }
+        
+function createComparisonChart(groups) {
+    const ctx = resetChartCanvas();
 
-            const colors = ['rgba(102, 126, 234, 0.6)', 'rgba(118, 75, 162, 0.6)'];
-            const borderColors = ['rgba(102, 126, 234, 1)', 'rgba(118, 75, 162, 1)'];
+    if (currentChart) {
+        currentChart.destroy();
+    }
 
-            currentChart = new Chart(ctx, {
-                type: 'box',
-                data: {
-                    labels: groups.map(g => g.label),
-                    datasets: groups.map((group, index) => ({
-                        label: group.label,
-                        data: [{
-                            min: Math.min(...group.values),
-                            q1: percentile(group.values, 25),
-                            median: percentile(group.values, 50),
-                            q3: percentile(group.values, 75),
-                            max: Math.max(...group.values),
-                            mean: group.values.reduce((a, b) => a + b, 0) / group.values.length
-                        }],
-                        backgroundColor: colors[index],
-                        borderColor: borderColors[index],
-                        borderWidth: 2
-                    }))
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Group Comparison'
-                        }
+    const labels = groups.map(g => g.label);
+    const means = groups.map(g => g.values.reduce((a, b) => a + b, 0) / g.values.length);
+    const stddevs = groups.map(g => {
+        const mean = g.values.reduce((a, b) => a + b, 0) / g.values.length;
+        return Math.sqrt(g.values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / g.values.length);
+    });
+
+    currentChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Group Mean',
+                data: means,
+                backgroundColor: ['rgba(102, 126, 234, 0.6)', 'rgba(118, 75, 162, 0.6)'],
+                borderColor: ['rgba(102, 126, 234, 1)', 'rgba(118, 75, 162, 1)'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Mean Comparison of Groups'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Mean Value'
                     }
                 }
-            });
+            }
         }
+    });
+}
 
-        function createClassificationChart(classProbabilities) {
-            const ctx = document.getElementById('results-chart').getContext('2d');
+
+function createClassificationChart(classProbabilities) {
+            const ctx = resetChartCanvas();
             
             if (currentChart) {
                 currentChart.destroy();
@@ -445,4 +453,13 @@ function toggleRows(button) {
     const hidden = [...rows].some(row => row.style.display === "none" || !row.style.display);
     rows.forEach(row => row.style.display = hidden ? "table-row" : "none");
     button.textContent = hidden ? "Show Less" : "Show More";
+}
+
+
+
+function resetChartCanvas() {
+    const chartContainer = document.getElementById("chart-container");
+    chartContainer.innerHTML = '<canvas id="results-chart"></canvas>';
+    const canvas = document.getElementById("results-chart");
+    return canvas.getContext("2d");
 }
